@@ -1,17 +1,39 @@
 trigger:
-  - main
+  - main  # Triggers pipeline on push to 'main' branch
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: 'ubuntu-latest'  # Uses Ubuntu VM for pipeline runner
+
+variables:
+  pythonVersion: '3.11'  # Easily change Python version here
 
 steps:
 - task: UsePythonVersion@0
   inputs:
-    versionSpec: '3.11'
+    versionSpec: '$(pythonVersion)'
+    addToPath: true
+  displayName: 'Select Python $(pythonVersion)'
 
 - script: |
     python -m venv venv
     source venv/bin/activate
+    pip install --upgrade pip
     pip install -r requirements.txt
-    python -m unittest discover
-  displayName: 'Install and run tests'
+  displayName: 'Install Dependencies'
+
+- script: |
+    source venv/bin/activate
+    python -m pytest --maxfail=1 --disable-warnings -v
+  displayName: 'Run Tests'
+
+- script: |
+    source venv/bin/activate
+    pylint --disable=R,C add.py app.py || true
+  displayName: 'Lint Code (non-blocking)'
+
+- script: |
+    source venv/bin/activate
+    python app.py &
+    sleep 5  # Give Flask time to boot
+    ./make_predictions.sh
+  displayName: 'Test API Endpoint with make_predictions.sh'
