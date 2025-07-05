@@ -1,1 +1,3 @@
-print ("Hello, World!")
+# add.py
+def add(a, b):
+    return a + b
